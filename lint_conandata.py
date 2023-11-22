@@ -55,7 +55,7 @@ def check_alternative_archives(url, orig_size):
         r = test_url(new_url, timeout=2)
         if r and r.ok:
             if "Content-Length" not in r.headers:
-                logging.warning("a potentially smaller archive exists at %s", new_url)
+                print(f"a potentially smaller archive exists at {new_url}")
                 return
             size = int(r.headers["Content-Length"])
             results.append((size, new_url))
@@ -64,8 +64,7 @@ def check_alternative_archives(url, orig_size):
         best_size, best_url = results[0]
         if orig_size and best_size and best_size < orig_size:
             improvement = (orig_size - best_size) / orig_size
-            logging.warning("a %.1f%% smaller archive exists at %s", 
-                            improvement * 100, best_url)
+            print(f"a {improvement:.1%} smaller archive exists at {best_url}")
 
 
 def main(path: str) -> int:
@@ -116,7 +115,9 @@ def main(path: str) -> int:
                 orig_size = int(orig_size)
             check_alternative_archives(url, orig_size)
         elif response:
-            logging.warning("url %s is not available (%d)", url, response.status_code)
+            print(f"url {url} is not available ({response.status_code})")
+        else:
+            print(f"url {url} is not available")
 
     if at_least_one_version_in_url:
         for vers in versions_not_in_url:
