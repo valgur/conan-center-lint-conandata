@@ -67,6 +67,8 @@ def main(path: str) -> int:
                         print(f"more compact archive exists at {new_url}\n")
             except requests.exceptions.Timeout:
                 logging.warning("timeout when contacting %s", url)
+            except requests.exceptions.ConnectionError:
+                logging.warning("connection error when contacting %s", url)
     if at_least_one_version_in_url:
         for vers in versions_not_in_url:
             print(f"url of {vers} does not contain version\n")
