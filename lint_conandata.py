@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from typing import Optional
 
 import requests
 import yaml
@@ -20,14 +21,15 @@ def iterate_urls(node):
                     yield version, url_, sha
 
 
-def test_url(url: str) -> requests.Response:
+def test_url(url: str, timeout=10) -> Optional[requests.Response]:
     try:
-        response = session.head(url, timeout=10)
+        response = session.head(url, timeout=timeout)
         return response
     except requests.exceptions.Timeout:
         logging.warning("timeout when contacting %s", url)
     except requests.exceptions.ConnectionError:
         logging.warning("connection error when contacting %s", url)
+    return None
 
 
 def check_alternative_archives(url, orig_size):
@@ -50,8 +52,8 @@ def check_alternative_archives(url, orig_size):
             else:
                 # Skip the request for the original URL
                 continue
-        r = test_url(new_url)
-        if r.ok:
+        r = test_url(new_url, timeout=2)
+        if r and r.ok:
             if "Content-Length" not in r.headers:
                 logging.warning("a potentially smaller archive exists at %s", new_url)
                 return
@@ -62,7 +64,8 @@ def check_alternative_archives(url, orig_size):
         best_size, best_url = results[0]
         if orig_size and best_size and best_size < orig_size:
             improvement = (orig_size - best_size) / orig_size
-            logging.warning("a %.1f%% smaller archive exists at %s", improvement * 100, best_url)
+            logging.warning("a %.1f%% smaller archive exists at %s", 
+                            improvement * 100, best_url)
 
 
 def main(path: str) -> int:
@@ -95,23 +98,25 @@ def main(path: str) -> int:
         version = version.lower()
         url = url.lower()
         if not version.startswith("cci."):
-            if (version in url) or \
-                (version.replace(".", "") in url) or \
-                (version.replace(".", "_") in url) or \
-                (version.replace("-", "") in url) or \
-                (version.endswith(".0") and version[:-2] in url):
+            if (
+                (version in url)
+                or (version.replace(".", "") in url)
+                or (version.replace(".", "_") in url)
+                or (version.replace("-", "") in url)
+                or (version.endswith(".0") and version[:-2] in url)
+            ):
                 at_least_one_version_in_url = True
             else:
                 versions_not_in_url.append((version, url))
 
         response = test_url(url)
-        if response.ok:
+        if response and response.ok:
             orig_size = response.headers.get("Content-Length")
             if orig_size is not None:
                 orig_size = int(orig_size)
             check_alternative_archives(url, orig_size)
-        else:
-            logging.warning("url %s is not reachable (%d)", url, response.status_code)
+        elif response:
+            logging.warning("url %s is not available (%d)", url, response.status_code)
 
     if at_least_one_version_in_url:
         for vers in versions_not_in_url:
