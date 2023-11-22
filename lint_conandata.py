@@ -49,7 +49,11 @@ def main(path: str) -> int:
         version = version.lower()
         url = url.lower()
         if not version.startswith("cci."):
-            if (version in url) or (version.replace('.', '') in url):
+            if (version in url) or \
+                (version.replace('.', '') in url) or \
+                (version.replace('.', '_') in url) or \
+                (version.replace('-', '') in url) or \
+                (version.endswith(".0") and version[:-2] in url):
                 at_least_one_version_in_url = True
             else:
                 versions_not_in_url.append((version, url))
